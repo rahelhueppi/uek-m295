@@ -1,4 +1,9 @@
 const express = require("express");
+const session = require('express-session')
+//const swaggerAutogen = require('swagger-autogen')()
+//const swaggerUi = require('swagger-ui-express');
+//const swaggerDocument = require('./swagger_output.json');
+
 const app = express();
 const port = 3000;
 
@@ -6,17 +11,17 @@ const port = 3000;
 //im body senden kann und diese direkt als JavaScript Objekt verfügbar werden
 app.use(express.json());
 
-/*
-//Sicherstellen, dass keine der Properties leer sind, außer "returned_at". funktioniert noch nicht
-app.use((request, response, next) => {
-  const { isbn, customer_id, borrowed_at } = request.body;
-  if (!isbn || !customer_id || !borrowed_at) {
-    return response.status(422).send({ error: 'All fields except returned_at are required' });
-  }
-  next();
- });*/ 
+//swaggerAutogen( './swagger_output.json', ['./aufgabe-6-2.js'])
+//app.use('/swagger-ui', swaggerUi.serve, swaggerUi.setup(swaggerDocument))
 
-//app.use(express.urlencoded({ extended: true }))
+app.use(express.json())
+app.use(session({
+  secret: 'supersecret',
+	resave: false,
+	saveUninitialized: false,
+  cookie: {}
+}))
+
 
 // generated with ChatGPT
 let books = [
@@ -108,124 +113,67 @@ app.patch("/lends/:id", (request, response) => {
   response.status(200).send(lend);
 });
 
-app.listen(port, () => {
-  console.log(`Bookstore app listening on port ${port}`);
-});
-
-
-
-
-
-
-
-
-
-//Lösung
 /*
-const { randomUUID } = require('node:crypto');
-const express = require('express');
-const app = express();
-const port = 3000;
+app.post('/login', function (request, response) {
+	const { email, password } = request.body
+    secretAdminCredentials = request.body
+	// Check the credentials against store
+	if (email?.toLowerCase() == secretAdminCredentials.email && password == secretAdminCredentials.password) {
 
-// Hier lade ich die Express JSON Middleware, damit ich an meine Endpunkte JSON-Daten im Body senden kann und diese direkt als JavaScript Objekt verfügbar werden.
-app.use(express.json());
+		// Link email to session
+		request.session.email = email
 
-// generated with ChatGPT
-let books = [
-  { isbn: "978-0143124177", title: "The Goldfinch", year: "2013", author: "Donna Tartt" },
-  { isbn: "978-0307277671", title: "The Road", year: "2006", author: "Cormac McCarthy" },
-  { isbn: "978-0553386790", title: "The Book Thief", year: "2005", author: "Markus Zusak" },
-  { isbn: "978-0812995343", title: "All the Light We Cannot See", year: "2014", author: "Anthony Doerr" },
-  { isbn: "978-0375831003", title: "The Curious Incident of the Dog in the Night-Time", year: "2003", author: "Mark Haddon" },
-  { isbn: "978-1501132957", title: "The Underground Railroad", year: "2016", author: "Colson Whitehead" },
-  { isbn: "978-0679735779", title: "Beloved", year: "1987", author: "Toni Morrison" },
-  { isbn: "978-0316769488", title: "The Catcher in the Rye", year: "1951", author: "J.D. Salinger" },
-  { isbn: "978-0143039433", title: "Never Let Me Go", year: "2005", author: "Kazuo Ishiguro" },
-  { isbn: "978-0345804310", title: "Gone Girl", year: "2012", author: "Gillian Flynn" }
-];
+		return response.status(200).json({ email: request.session.email })
+	}
 
-let lends = [];
+  return response.status(401).json({ error: "Invalid credentials" })
+})*/
 
-// Books
-app.get('/books', (request, response) => {
-  response.send(books);
-});
 
-app.get('/books/:isbn', (request, response) => {
-  response.send(books.find((book) => book.isbn === request.params.isbn ))
-});
+app.post('/login', function (request, response) {
+   const { email, password } = request.body
 
-app.post('/books', (request, response) => {
-  // immutable manipulation
-  books = [...books, request.body];
-  // mutable manipulation
-  // books.push(request.body);
-  response.status(201).send(books);
-});
+   // Prüfen Sie die Credentials gegen die vordefinierten Werte
+   const predefinedEmail = "desk@library.example";
+   const predefinedPassword = "m295";
 
-app.put('/books/:isbn', (request, response) => {
-  books = books.map((book) => book.isbn === request.params.isbn ? request.body : book);
-  /*
-  books = books.map((book) => {
-    if(book.isbn === request.params.isbn) {
-      return request.body;
-    } else {
-      return book;
-    }
-  });
-  *//*
-  response.send(books);
-});
+   if (email?.toLowerCase() === predefinedEmail && password === predefinedPassword) {
+       // Link email to session
+       request.session.email = email
 
-app.patch('/books/:isbn', (request, response) => {
-  const keys = Object.keys(request.body);
-  const oldBook = books.find((book) => book.isbn === request.params.isbn );
-  keys.forEach((key) => oldBook[key] = request.body[key]);
-  books = books.map((book) => book.isbn === request.params.isbn ? oldBook : book);
-  response.send(books);
-});
+       return response.status(201).json({ email: request.session.email })
+   }
 
-app.delete('/books/:isbn', (request, response) => {
-  books = books.filter((book) => book.isbn !== request.params.isbn);
-  response.send(books);
-});
+   return response.status(401).json({ error: "Invalid credentials" })
+})
 
-// Lends
-app.get('/lends', (request, response) => {
-  response.send(lends);
-});
 
-app.get('/lends/:id', (request, response) => {
-  response.send(lends.find((lend) => lend.id === request.params.id))
-});
+app.get('/verify', function (request, response) {
+	
+	// Check if email is set in session
+	if (request.session.email) {
+		return response.status(200).json({ email: request.session.email })
+	}
 
-app.post('/lends', (request, response) => {
-  const newLend = request.body;
-  newLend['id'] = randomUUID();
-  newLend['borrowed_at'] = new Date().toISOString();
-  newLend['returned_at'] = null;
+  return response.status(401).json({ error: "Not logged in" })
+})
 
-  if(!newLend['isbn'] || !newLend['customer_id']) {
-    return response.status(422).send("isbn and customer_id are required!");
-  }
+app.delete('/logout', function (request, response) {
 
-  const lendsByCustomer = lends.filter((lend) => lend['customer_id'] === newLend['customer_id'] && !lend['returned_at']);
+	// Check if email is set in session
+	if (request.session.email) {
 
-  if(lendsByCustomer.length >= 3) {
-    return response.status(400).send("Customer has too many active lends.")
-  }
+		// Reset link of session to email
+		request.session.email = null
 
-  lends = [...lends, request.body];
-  response.status(201).send(lends);
-});
+		return response.status(204).send()
+	}
 
-app.delete('/lends/:id', (request, response) => {
-  const returnedLend = lends.find((lend) => lend.id === request.params.id)
-  returnedLend['returned_at'] = new Date().toISOString();
-  response.send(lends);
-});
+  return response.status(401).json({ error: "Not logged in" })
+})
 
-// Server
+
+
 app.listen(port, () => {
   console.log(`Bookstore app listening on port ${port}`);
-});*/
+});
